@@ -11,6 +11,7 @@ mnist = read_data_sets(data_dir)
 
 train_xdata = np.array([np.reshape(x, [28, 28]) for x in mnist.train.images])
 test_xdata = np.array([np.reshape(x, [28, 28]) for x in mnist.test.images])
+
 train_label = mnist.train.labels
 test_label = mnist.test.labels
 
@@ -21,8 +22,8 @@ image_width = train_xdata[0].shape[0]
 image_height = train_xdata[0].shape[1]
 target_size = max(train_label) + 1
 num_channels = 1
-generations = 100
-eval_every = 5
+generations = 2000
+eval_every = 20
 conv1_features = 25
 conv2_features = 50
 max_pool_size1 = 2
@@ -76,7 +77,8 @@ def batch_norm(x):
                                      name='beta', trainable=True)
         gamma = tf.Variable(tf.constant(1.0, shape=[n_out]),
                                       name='gamma', trainable=True)
-        batch_mean, batch_var = tf.nn.moments(x, [0,1,2], name='moments')
+        batch_mean, batch_var = tf.nn.moments(x, [0, 1, 2], name='moments')
+
         ema = tf.train.ExponentialMovingAverage(decay=0.5)
 
         def mean_var_with_update():
@@ -94,11 +96,11 @@ def batch_norm(x):
 def my_bn_conv_net(input_data):
     conv1 = tf.nn.conv2d(input_data, conv1_weight, strides=[1, 1, 1, 1], padding='SAME')
     #logit1 = tf.nn.bias_add(conv1, conv1_bias)
-    #swish1 = tf.nn.relu(logit1)
+    swish1 = tf.nn.relu(conv1)
 
     conv1 = batch_norm(conv1)
 
-    swish1 = tf.multiply(2*conv1, tf.nn.sigmoid(conv1_beta * conv1))
+    #swish1 = tf.multiply(2*conv1, tf.nn.sigmoid(conv1_beta * conv1))
     #swish1 = tf.multiply(logit1, tf.nn.sigmoid(logit1))
     max_pool1 = tf.nn.max_pool(swish1, ksize=[1, max_pool_size1, max_pool_size1, 1], strides=[1, max_pool_size1, max_pool_size1, 1], padding='SAME')
     feature1_shape = max_pool1.get_shape().as_list()
@@ -110,8 +112,8 @@ def my_bn_conv_net(input_data):
     conv2 = batch_norm(conv2)
 
     #logit2 = tf.nn.bias_add(conv2, conv2_bias)
-    #swish2 = tf.nn.relu(logit2)
-    swish2 = tf.multiply(2*conv2, tf.nn.sigmoid(conv2_beta * conv2))
+    swish2 = tf.nn.relu(conv2)
+    #swish2 = tf.multiply(2*conv2, tf.nn.sigmoid(conv2_beta * conv2))
     #swish2 = tf.multiply(logit2, tf.nn.sigmoid(logit2))
     max_pool2 = tf.nn.max_pool(swish2, ksize=[1, max_pool_size2, max_pool_size2, 1], strides=[1, max_pool_size2, max_pool_size2, 1], padding='SAME')
     feature2_shape = max_pool2.get_shape().as_list()
@@ -222,6 +224,13 @@ for i in range(generations):
     _, l, p, _, _, _ = sess.run([train_step, loss, prediction, conv1_beta, conv2_beta, full1_beta], feed_dict=train_dict)
 
     if (i+1) % eval_every == 0:
+        rand_index = np.random.choice(len(test_xdata), size=batch_size)
+        rand_x = test_xdata[rand_index]
+        rand_x = np.expand_dims(rand_x, 3)
+        rand_y = test_label[rand_index]
+        test_dict = {x_input: rand_x, y_target: rand_y, phase_train: False}
+
+        p = sess.run(prediction, feed_dict=test_dict)
         print(l, get_accuracy(p, rand_y))
 
 
