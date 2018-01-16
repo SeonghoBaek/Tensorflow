@@ -35,7 +35,7 @@ def visualize(_original, _reconstructions, num_visualize):
                                  mnist_image_shape[1]))
         rec = np.reshape(rec, (mnist_image_shape[0],
                                mnist_image_shape[1]))
-        f, ax = plt.subplots(1,2)
+        f, ax = plt.subplots(1, 2)
         ax[0].imshow(orig, cmap='gray')
         ax[1].imshow(rec, cmap='gray')
         plt.savefig(vis_folder + "test_%d.png" % count)
