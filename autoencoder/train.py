@@ -10,10 +10,12 @@ num_visualize = 10
 lr = 0.01
 num_epochs = 50
 
+
 def calculate_loss(original, reconstructed):
     return tf.div(tf.reduce_sum(tf.square(tf.sub(reconstructed,
                                                  original))), 
                   tf.constant(float(batch_size)))
+
 
 def train(dataset):
     input_image, reconstructed_image = autoencoder(batch_shape)
@@ -21,6 +23,7 @@ def train(dataset):
     optimizer = tf.train.GradientDescentOptimizer(lr).minimize(loss)
 
     init = tf.global_variables_initializer()
+
     with tf.Session() as session:
         session.run(init)
 
@@ -28,6 +31,7 @@ def train(dataset):
         print("Dataset size:", dataset_size)
         num_iters = (num_epochs * dataset_size)/batch_size
         print("Num iters:", num_iters)
+
         for step in range(num_iters):
             input_batch  = get_next_batch(dataset.train, batch_size)
             loss_val,  _ = session.run([loss, optimizer], 
@@ -44,4 +48,3 @@ def train(dataset):
 if __name__ == '__main__':
     dataset = load_dataset()
     train(dataset)
-    

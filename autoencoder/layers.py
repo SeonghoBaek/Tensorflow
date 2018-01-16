@@ -2,12 +2,13 @@ import tensorflow as tf
 
 from layer_utils import get_deconv2d_output_dims
 
+
 def conv(input, name, filter_dims, stride_dims, padding='SAME',
          non_linear_fn=tf.nn.relu):
     input_dims = input.get_shape().as_list()
-    assert(len(input_dims) == 4) # batch_size, height, width, num_channels_in
-    assert(len(filter_dims) == 3) # height, width and num_channels out
-    assert(len(stride_dims) == 2) # stride height and width
+    assert(len(input_dims) == 4)    # batch_size, height, width, num_channels_in
+    assert(len(filter_dims) == 3)   # height, width and num_channels out
+    assert(len(stride_dims) == 2)   # stride height and width
 
     num_channels_in = input_dims[-1]
     filter_h, filter_w, num_channels_out = filter_dims
@@ -16,15 +17,20 @@ def conv(input, name, filter_dims, stride_dims, padding='SAME',
     # Define a variable scope for the conv layer
     with tf.variable_scope(name) as scope:
         # Create filter weight variable
-        
+        conv_weight = tf.Variable(tf.truncated_normal([filter_h, filter_w, num_channels_in, num_channels_out], stddev=0.1, dtype=tf.float32))
         # Create bias variable
-        
+        conv_bias = tf.Variable((tf.zeros([num_channels_out], dtype=tf.float32)))
         # Define the convolution flow graph
-        
+        map = tf.nn.conv2d(input, conv_weight, strides=[1, stride_h, stride_w, 1], padding=padding)
         # Add bias to conv output
-        
+        map = tf.nn.bias_add(map, conv_bias)
+
         # Apply non-linearity (if asked) and return output
+        activation = non_linear_fn(map)
+
+        return activation
         pass
+
 
 def deconv(input, name, filter_dims, stride_dims, padding='SAME',
            non_linear_fn=tf.nn.relu):

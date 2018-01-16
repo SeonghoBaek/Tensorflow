@@ -22,7 +22,7 @@ image_width = train_xdata[0].shape[0]
 image_height = train_xdata[0].shape[1]
 target_size = max(train_label) + 1
 num_channels = 1
-generations = 2000
+generations = 20
 eval_every = 20
 conv1_features = 25
 conv2_features = 50
@@ -30,12 +30,12 @@ max_pool_size1 = 2
 max_pool_size2 = 2
 fully_connected_size1 = 100
 
-x_input_shape = [batch_size, image_height, image_width, num_channels]
+x_input_shape = [None, image_height, image_width, num_channels]
 x_input = tf.placeholder(dtype=tf.float32, shape=x_input_shape)
-y_target = tf.placeholder(dtype=tf.int32, shape=[batch_size])
-eval_input_shape = [batch_size, image_height, image_width, num_channels]
+y_target = tf.placeholder(dtype=tf.int32, shape=[None, 1])
+eval_input_shape = [None, image_height, image_width, num_channels]
 eval_input = tf.placeholder(dtype=tf.float32, shape=eval_input_shape)
-eval_target = tf.placeholder(dtype=tf.int32, shape=[batch_size])
+eval_target = tf.placeholder(dtype=tf.int32, shape=[None, 1])
 phase_train = tf.placeholder(tf.bool)
 conv1_weight = tf.Variable(tf.truncated_normal([4, 4, num_channels, conv1_features], stddev=0.1, dtype=tf.float32))
 conv1_bias = tf.Variable(tf.zeros([conv1_features], dtype=tf.float32))
@@ -57,6 +57,10 @@ full2_weight = tf.Variable(tf.truncated_normal([fully_connected_size1, target_si
 full2_bias = tf.Variable(tf.truncated_normal([target_size], stddev=0.1, dtype=tf.float32))
 full1_beta = tf.Variable(tf.ones([fully_connected_size1], dtype=tf.float32))
 
+train_xdata = np.expand_dims(train_xdata, 3)
+test_xdata = np.expand_dims(test_xdata, 3)
+train_label = np.expand_dims(train_label, 1)
+test_label = np.expand_dims(test_label, 1)
 
 def batch_norm(x):
     """
@@ -103,7 +107,8 @@ def my_bn_conv_net(input_data):
     #swish1 = tf.multiply(2*conv1, tf.nn.sigmoid(conv1_beta * conv1))
     #swish1 = tf.multiply(logit1, tf.nn.sigmoid(logit1))
     max_pool1 = tf.nn.max_pool(swish1, ksize=[1, max_pool_size1, max_pool_size1, 1], strides=[1, max_pool_size1, max_pool_size1, 1], padding='SAME')
-    feature1_shape = max_pool1.get_shape().as_list()
+    #feature1_shape = max_pool1.get_shape().as_list()
+    feature1_shape = tf.shape(max_pool1)
     feature1 = tf.reshape(max_pool1, [feature1_shape[0], -1])
 
     print('Feature1 ' + str(feature1.get_shape().as_list()))
@@ -116,7 +121,8 @@ def my_bn_conv_net(input_data):
     #swish2 = tf.multiply(2*conv2, tf.nn.sigmoid(conv2_beta * conv2))
     #swish2 = tf.multiply(logit2, tf.nn.sigmoid(logit2))
     max_pool2 = tf.nn.max_pool(swish2, ksize=[1, max_pool_size2, max_pool_size2, 1], strides=[1, max_pool_size2, max_pool_size2, 1], padding='SAME')
-    feature2_shape = max_pool2.get_shape().as_list()
+    #feature2_shape = max_pool2.get_shape().as_list()
+    feature2_shape = tf.shape(max_pool2)
     feature2 = tf.reshape(max_pool2, [feature2_shape[0], -1])
     print('Feature2 ' + str(feature2.get_shape().as_list()))
 
@@ -150,7 +156,8 @@ def my_conv_net(input_data):
     swish1 = tf.multiply(2*logit1, tf.nn.sigmoid(conv1_beta * logit1))
     #swish1 = tf.multiply(logit1, tf.nn.sigmoid(logit1))
     max_pool1 = tf.nn.max_pool(swish1, ksize=[1, max_pool_size1, max_pool_size1, 1], strides=[1, max_pool_size1, max_pool_size1, 1], padding='SAME')
-    feature1_shape = max_pool1.get_shape().as_list()
+    #feature1_shape = max_pool1.get_shape().as_list()
+    feature1_shape = tf.shape(max_pool1)
     feature1 = tf.reshape(max_pool1, [feature1_shape[0], -1])
 
     print('Feature1 ' + str(feature1.get_shape().as_list()))
@@ -161,7 +168,8 @@ def my_conv_net(input_data):
     swish2 = tf.multiply(2*logit2, tf.nn.sigmoid(conv2_beta * logit2))
     #swish2 = tf.multiply(logit2, tf.nn.sigmoid(logit2))
     max_pool2 = tf.nn.max_pool(swish2, ksize=[1, max_pool_size2, max_pool_size2, 1], strides=[1, max_pool_size2, max_pool_size2, 1], padding='SAME')
-    feature2_shape = max_pool2.get_shape().as_list()
+    #feature2_shape = max_pool2.get_shape().as_list()
+    feature2_shape = tf.shape(max_pool2)
     feature2 = tf.reshape(max_pool2, [feature2_shape[0], -1])
     print('Feature2 ' + str(feature2.get_shape().as_list()))
 
@@ -182,6 +190,7 @@ def my_conv_net(input_data):
 
     print(fully_connected1.get_shape().as_list())
 
+    tf.nn.dropout(fully_connected1, keep_prob=0.5)
     final_model_output = tf.add(tf.matmul(fully_connected1, full2_weight), full2_bias)
 
     return final_model_output
@@ -191,7 +200,7 @@ def my_conv_net(input_data):
 model_output = my_bn_conv_net(x_input)
 #test_model_output = my_conv_net(eval_input)
 
-loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=model_output, labels=y_target))
+loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=model_output, labels=tf.squeeze(y_target)))
 
 prediction = tf.nn.softmax(model_output)
 #test_prediction = tf.nn.softmax(test_model_output)
@@ -199,7 +208,10 @@ prediction = tf.nn.softmax(model_output)
 
 def get_accuracy(logits, targets):
     batch_predictions = np.argmax(logits, axis=1)
+    batch_predictions = np.expand_dims(batch_predictions, 1)
     num_correct = np.sum(np.equal(batch_predictions, targets))
+
+    #print(batch_predictions, targets)
 
     return 100.*num_correct/batch_predictions.shape[0]
 
@@ -207,13 +219,38 @@ def get_accuracy(logits, targets):
 my_optimizer = tf.train.AdamOptimizer(0.01)
 train_step = my_optimizer.minimize(loss)
 
+init = tf.global_variables_initializer()
+sess.run(init)
+
 saver = tf.train.Saver()
 
-saver.restore(sess, '/Users/major/model.ckpt')
+try:
+    saver.restore(sess, '~/model.ckpt')
+except:
+    print('Restore failed')
 
-#init = tf.global_variables_initializer()
-#sess.run(init)
+for i in range(generations):
+    rand_index = np.random.choice(len(train_xdata), size=len(train_xdata))
 
+    num_iterations = len(train_xdata) / batch_size + 1
+
+    for itr in range(int(num_iterations)):
+        if (itr + 1) * batch_size > len(train_xdata):
+            batch_index = rand_index[itr * batch_size:]
+        else:
+            batch_index = rand_index[itr * batch_size:(itr + 1) * batch_size]
+
+        train_dict = {x_input: train_xdata[batch_index], y_target: train_label[batch_index], phase_train: True}
+
+        sess.run(train_step, feed_dict=train_dict)
+
+    test_index = np.random.choice(len(test_xdata), size=batch_size)
+    test_dict = {x_input: test_xdata[test_index], y_target: test_label[test_index], phase_train: False}
+
+    p = sess.run(prediction, feed_dict=test_dict)
+    print(get_accuracy(p, test_label[test_index]))
+
+"""
 for i in range(generations):
     rand_index = np.random.choice(len(train_xdata), size=batch_size)
     rand_x = train_xdata[rand_index]
@@ -232,7 +269,9 @@ for i in range(generations):
 
         p = sess.run(prediction, feed_dict=test_dict)
         print(l, get_accuracy(p, rand_y))
+"""
 
-
-
-saver.save(sess, '/Users/major/model.ckpt')
+try:
+    saver.save(sess, '~/model.ckpt')
+except:
+    print('Save failed')

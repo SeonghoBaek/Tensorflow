@@ -126,7 +126,7 @@ for i in range(2000):
    rand_x = x_vals_train[rand_index]
    rand_y = y_vals_train[rand_index]
 
-   for j in range(int(len(x_vals_train) / batch_size)):
+   for j in range(int(len(x_vals_train) / batch_size) + 1):
        if (j+1) * batch_size > len(rand_x):
            batch_idx = rand_index[j*batch_size:]
        else:
