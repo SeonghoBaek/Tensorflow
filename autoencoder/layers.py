@@ -4,7 +4,7 @@ from layer_utils import get_deconv2d_output_dims
 
 
 def conv(input, name, filter_dims, stride_dims, padding='SAME',
-         non_linear_fn=tf.nn.relu):
+         non_linear_fn=tf.nn.relu, bias=True):
     input_dims = input.get_shape().as_list()
     print(name, 'in', input_dims)
     assert(len(input_dims) == 4)    # batch_size, height, width, num_channels_in
@@ -18,13 +18,14 @@ def conv(input, name, filter_dims, stride_dims, padding='SAME',
     # Define a variable scope for the conv layer
     with tf.variable_scope(name) as scope:
         # Create filter weight variable
-        conv_weight = tf.Variable(tf.random_normal([filter_h, filter_w, num_channels_in, num_channels_out], stddev=0.1, dtype=tf.float32))
+        conv_weight = tf.Variable(tf.truncated_normal([filter_h, filter_w, num_channels_in, num_channels_out], stddev=0.1, dtype=tf.float32))
         # Create bias variable
         conv_bias = tf.Variable(tf.zeros([num_channels_out], dtype=tf.float32))
         # Define the convolution flow graph
         map = tf.nn.conv2d(input, conv_weight, strides=[1, stride_h, stride_w, 1], padding=padding)
         # Add bias to conv output
-        map = tf.nn.bias_add(map, conv_bias)
+        if bias is True:
+            map = tf.nn.bias_add(map, conv_bias)
 
         # Apply non-linearity (if asked) and return output
         activation = non_linear_fn(map)
@@ -51,7 +52,7 @@ def deconv_v2(input, name, filter_dims, output_dims, padding='SAME', non_linear_
         # Create filter weight variable
         # Note that num_channels_out and in positions are flipped for deconv.
         deconv_weight = tf.Variable(
-            tf.random_normal([filter_h, filter_w, num_channels_out, num_channels_in], stddev=0.1, dtype=tf.float32))
+            tf.truncated_normal([filter_h, filter_w, num_channels_out, num_channels_in], stddev=0.1, dtype=tf.float32))
         # Create bias variable
         deconv_bias = tf.Variable(tf.zeros([num_channels_out], dtype=tf.float32))
 
@@ -142,7 +143,7 @@ def fc(input, name, out_dim, non_linear_fn=tf.nn.relu):
             flat_input = input
 
         # Create weight variable
-        fc_weight = tf.Variable(tf.random_normal([in_dim, out_dim], stddev=0.1, dtype=tf.float32))
+        fc_weight = tf.Variable(tf.truncated_normal([in_dim, out_dim], stddev=0.1, dtype=tf.float32))
 
         # Create bias variable
         fc_bias = tf.Variable(tf.zeros([out_dim], dtype=tf.float32))
@@ -159,3 +160,38 @@ def fc(input, name, out_dim, non_linear_fn=tf.nn.relu):
 
         return activation
         pass
+
+
+def batch_norm(x, phase_train):
+    """
+    Batch normalization on convolutional maps.
+    Ref.: http://stackoverflow.com/questions/33949786/how-could-i-use-batch-normalization-in-tensorflow
+    Args:
+        x:           Tensor, 4D BHWD input maps
+        n_out:       integer, depth of input maps
+        phase_train: boolean tf.Varialbe, true indicates training phase
+        scope:       string, variable scope
+    Return:
+        normed:      batch-normalized maps
+    """
+    with tf.variable_scope('bn'):
+        n_out = x.get_shape().as_list()[-1]
+
+        beta = tf.Variable(tf.constant(0.0, shape=[n_out]),
+                                     name='beta', trainable=True)
+        gamma = tf.Variable(tf.constant(1.0, shape=[n_out]),
+                                      name='gamma', trainable=True)
+        batch_mean, batch_var = tf.nn.moments(x, [0, 1, 2], name='moments')
+
+        ema = tf.train.ExponentialMovingAverage(decay=0.5)
+
+        def mean_var_with_update():
+            ema_apply_op = ema.apply([batch_mean, batch_var])
+            with tf.control_dependencies([ema_apply_op]):
+                return tf.identity(batch_mean), tf.identity(batch_var)
+
+        mean, var = tf.cond(phase_train,
+                            mean_var_with_update,
+                            lambda: (ema.average(batch_mean), ema.average(batch_var)))
+        normed = tf.nn.batch_normalization(x, mean, var, beta, gamma, 1e-3)
+    return normed

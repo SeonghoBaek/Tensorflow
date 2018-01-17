@@ -3,18 +3,24 @@ import tensorflow as tf
 from layers import *
 
 
-def encoder(input):
+def encoder(input, phase_train):
     # Create a conv network with 3 conv layers and 1 FC layer
     # Conv 1: filter: [3, 3, 1], stride: [2, 2], relu
     # conv(input, name, filter_dims, stride_dims, padding='SAME', non_linear_fn=tf.nn.relu)
-    conv1 = conv(input, name='conv1', filter_dims=[3, 3, 1], stride_dims=[2, 2], padding='SAME', non_linear_fn=tf.nn.relu)
+    conv1 = conv(input, name='conv1', filter_dims=[3, 3, 1], stride_dims=[2, 2], padding='SAME', non_linear_fn=tf.nn.relu, bias=False)
+
+    conv1 = batch_norm(conv1, phase_train=phase_train)
 
     # Conv 2: filter: [3, 3, 8], stride: [2, 2], relu
-    conv2 = conv(conv1, name='conv2', filter_dims=[3, 3, 32], stride_dims=[2, 2], padding='SAME', non_linear_fn=tf.nn.relu)
-    
+    conv2 = conv(conv1, name='conv2', filter_dims=[3, 3, 32], stride_dims=[2, 2], padding='SAME', non_linear_fn=tf.nn.relu, bias=False)
+
+    conv2 = batch_norm(conv2, phase_train=phase_train)
+
     # Conv 3: filter: [3, 3, 8], stride: [2, 2], relu
-    conv3 = conv(conv2, name='conv3', filter_dims=[3, 3, 64], stride_dims=[2, 2], padding='SAME', non_linear_fn=tf.nn.relu)
-    
+    conv3 = conv(conv2, name='conv3', filter_dims=[3, 3, 32], stride_dims=[2, 2], padding='SAME', non_linear_fn=tf.nn.relu, bias=False)
+
+    conv3 = batch_norm(conv3, phase_train=phase_train)
+
     # FC: output_dim: 100, no non-linearity
     # fc(input, name, out_dim, non_linear_fn=tf.nn.relu)
     fc1 = fc(conv3, name='fc1', out_dim=128, non_linear_fn=None)
@@ -38,7 +44,7 @@ def decoder(input):
 
     # Deconv 1: filter: [3, 3, 8], stride: [2, 2], relu
     # deconv1 = deconv(feature, name='deconv1', filter_dims=[3, 3, 8], stride_dims=[2, 2], padding='SAME', non_linear_fn=tf.nn.relu)
-    deconv1 = deconv_v2(feature, name='deconv1', filter_dims=[3, 3, 64], output_dims=[7, 7, 64], padding='SAME', non_linear_fn=tf.nn.relu)
+    deconv1 = deconv_v2(feature, name='deconv1', filter_dims=[3, 3, 32], output_dims=[7, 7, 32], padding='SAME', non_linear_fn=tf.nn.relu)
     
     # Deconv 2: filter: [8, 8, 1], stride: [2, 2], padding: valid, relu
     # deconv2 = deconv(deconv1, name='deconv2', filter_dims=[8, 8, 1], stride_dims=[2, 2], padding='VALID', non_linear_fn=tf.nn.relu)
@@ -61,13 +67,14 @@ def autoencoder(input_shape):
     assert(len(input_shape) == 4)
     # Define place holder with input shape
     input_image = tf.placeholder(dtype=tf.float32, shape=input_shape)
+    phase_train = tf.placeholder(dtype=tf.bool)
 
     # Define variable scope for autoencoder
     with tf.variable_scope('autoencoder') as scope:
         # Pass input to encoder to obtain encoding
-        encoding = encoder(input_image)
+        encoding = encoder(input_image, phase_train)
         # Pass encoding into decoder to obtain reconstructed image
         reconstructed_image = decoder(encoding)
         # Return input image (placeholder) and reconstructed image
-        return input_image, reconstructed_image
+        return input_image, reconstructed_image, phase_train
         pass
