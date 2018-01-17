@@ -23,7 +23,7 @@ def calculate_loss(original, reconstructed, loss_func='mse'):
 
 
 def train(dataset):
-    input_image, reconstructed_image, phase_train = autoencoder(batch_shape)
+    input_image, reconstructed_image, phase_train, keep_prop = autoencoder(batch_shape)
     loss = calculate_loss(input_image, reconstructed_image, 'ce')
     #optimizer = tf.train.GradientDescentOptimizer(lr).minimize(loss)
     optimizer = tf.train.AdamOptimizer(lr).minimize(loss)
@@ -49,7 +49,7 @@ def train(dataset):
 
         for step in range(int(num_iters)):
             input_batch  = get_next_batch(dataset.train, batch_size)
-            loss_val,  _, = session.run([loss, optimizer], feed_dict={input_image: input_batch, phase_train: True})
+            loss_val,  _, = session.run([loss, optimizer], feed_dict={input_image: input_batch, phase_train: True, keep_prop: 1.0})
             if step % 1000 == 0:
                 print("Loss at step", step, ":", loss_val)
 
@@ -60,7 +60,7 @@ def train(dataset):
 
         test_batch = get_next_batch(dataset.test, batch_size)
         reconstruction = session.run(reconstructed_image,
-                                     feed_dict={input_image: test_batch, phase_train: False})
+                                     feed_dict={input_image: test_batch, phase_train: False, keep_prop: 1.0})
         visualize(test_batch, reconstruction, num_visualize)
 
 
