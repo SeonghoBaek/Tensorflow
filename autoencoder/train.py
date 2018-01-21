@@ -37,7 +37,7 @@ def train(dataset):
 
 
         try:
-            saver.restore(session, 'model.ckpt')
+            saver.restore(session, './model.ckpt')
         except:
             print('Restore failed')
 
@@ -54,7 +54,7 @@ def train(dataset):
                 print("Loss at step", step, ":", loss_val)
 
         try:
-            saver.save(session, 'model.ckpt')
+            saver.save(session, './model.ckpt')
         except:
             print('Save failed')
 
