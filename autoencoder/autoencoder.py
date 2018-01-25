@@ -23,7 +23,7 @@ def encoder(input, phase_train):
 
     # FC: output_dim: 100, no non-linearity
     # fc(input, name, out_dim, non_linear_fn=tf.nn.relu)
-    fc1 = fc(conv3, name='fc1', out_dim=256, non_linear_fn=None)
+    fc1 = fc(conv3, name='fc1', out_dim=128, non_linear_fn=None)
 
     return fc1
     raise NotImplementedError
@@ -32,11 +32,11 @@ def encoder(input, phase_train):
 def decoder(input, keep_prop):
     # Create a deconv network with 1 FC layer and 3 deconv layers
     # FC: output dim: 128, relu
-    #input = tf.nn.dropout(input, keep_prob=keep_prop)
-    #fc2 = fc(input, name='fc2', out_dim=128, non_linear_fn=tf.nn.relu)
+    input = tf.nn.dropout(input, keep_prob=keep_prop)
+    fc2 = fc(input, name='fc2', out_dim=256, non_linear_fn=tf.nn.relu)
 
     # Reshape to [batch_size, 4, 4, 8]
-    feature = tf.reshape(input, shape=[-1, 4, 4, 16])
+    feature = tf.reshape(fc2, shape=[-1, 4, 4, 16])
 
     print('reshape', feature.get_shape().as_list())
 

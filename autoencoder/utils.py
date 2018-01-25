@@ -1,6 +1,6 @@
 import os
 import sys
-import tensorflow
+import tensorflow as tf
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
@@ -17,6 +17,19 @@ def load_dataset():
 def get_next_batch(dataset, batch_size):
     # dataset should be mnist.(train/val/test)
     batch, _ = dataset.next_batch(batch_size)
+    batch_shape = [batch_size] + mnist_image_shape
+    return np.reshape(batch, batch_shape)
+
+
+def get_next_noise_batch(dataset, batch_size):
+    # dataset should be mnist.(train/val/test)
+    batch, _ = dataset.next_batch(batch_size)
+
+    for i in range(len(batch[0])):
+        if i%2 == 0:
+            batch[0][i] = 0
+
+    batch = np.reshape(batch, mnist_image_shape)
     batch_shape = [batch_size] + mnist_image_shape
     return np.reshape(batch, batch_shape)
 

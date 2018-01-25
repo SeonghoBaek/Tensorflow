@@ -22,6 +22,26 @@ def calculate_loss(original, reconstructed, loss_func='mse'):
     return tf.reduce_sum(tf.square(tf.subtract(reconstructed, original))) / batch_size
 
 
+def test(test_image):
+    input_image, reconstructed_image, phase_train, keep_prop = autoencoder([1, 28, 28, 1])
+
+    init = tf.global_variables_initializer()
+
+    saver = tf.train.Saver()
+
+    with tf.Session() as session:
+        session.run(init)
+
+        try:
+            saver.restore(session, './model.ckpt')
+        except:
+            print('Restore failed')
+
+        reconstruction = session.run(reconstructed_image,
+                                     feed_dict={input_image: test_image, phase_train: False, keep_prop: 1.0})
+        visualize(test_image, reconstruction, num_visualize)
+
+
 def train(dataset):
     input_image, reconstructed_image, phase_train, keep_prop = autoencoder(batch_shape)
     loss = calculate_loss(input_image, reconstructed_image, 'ce')
@@ -49,7 +69,7 @@ def train(dataset):
 
         for step in range(int(num_iters)):
             input_batch  = get_next_batch(dataset.train, batch_size)
-            loss_val,  _, = session.run([loss, optimizer], feed_dict={input_image: input_batch, phase_train: True, keep_prop: 1.0})
+            loss_val,  _, = session.run([loss, optimizer], feed_dict={input_image: input_batch, phase_train: True, keep_prop: 0.5})
             if step % 1000 == 0:
                 print("Loss at step", step, ":", loss_val)
 
@@ -66,4 +86,7 @@ def train(dataset):
 
 if __name__ == '__main__':
     dataset = load_dataset()
-    train(dataset)
+    #train(dataset)
+
+    test_image = get_next_noise_batch(dataset.test, 1)
+    test(test_image)
