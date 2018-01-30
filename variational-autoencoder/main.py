@@ -9,7 +9,7 @@ from ops import *
 
 class LatentAttention():
     def __init__(self):
-        self.mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
+        self.mnist = input_data.read_data_sets("../data/mnist/", one_hot=True)
         self.n_samples = self.mnist.train.num_examples
 
         self.n_hidden = 500

@@ -6,7 +6,7 @@ from tensorflow.contrib.learn.python.learn.datasets.mnist import read_data_sets
 
 sess = tf.Session()
 
-data_dir = 'temp'
+data_dir = '../data/mnist'
 mnist = read_data_sets(data_dir)
 
 train_xdata = np.array([np.reshape(x, [28, 28]) for x in mnist.train.images])
