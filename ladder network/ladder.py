@@ -18,10 +18,10 @@ starter_learning_rate = 0.02
 decay_after = 15  # epoch after which to begin learning rate decay
 
 batch_size = 100
-num_iter = (num_examples/batch_size) * num_epochs  # number of loop iterations
+num_iter = int((num_examples/batch_size) * num_epochs)  # number of loop iterations
 
 inputs = tf.placeholder(tf.float32, shape=(None, layer_sizes[0]))
-outputs = tf.placeholder(tf.float32)
+outputs = tf.placeholder(tf.float32, shape=[None, 10])
 
 
 def bi(inits, size, name):
@@ -31,14 +31,18 @@ def bi(inits, size, name):
 def wi(shape, name):
     return tf.Variable(tf.random_normal(shape, name=name)) / math.sqrt(shape[0])
 
-shapes = zip(layer_sizes[:-1], layer_sizes[1:])  # shapes of linear layers
+shapes_w = zip(layer_sizes[:-1], layer_sizes[1:])  # shapes of linear layers
+shapes_v = zip(layer_sizes[:-1], layer_sizes[1:])  # shapes of linear layers
 
-weights = {'W': [wi(s, "W") for s in shapes],  # Encoder weights
-           'V': [wi(s[::-1], "V") for s in shapes],  # Decoder weights
+weights = {'W': [wi(s, "W") for s in shapes_w],  # Encoder weights
+           'V': [wi(s[::-1], "V") for s in shapes_v],  # Decoder weights
            # batch normalization parameter to shift the normalized value
            'beta': [bi(0.0, layer_sizes[l+1], "beta") for l in range(L)],
            # batch normalization parameter to scale the normalized value
            'gamma': [bi(1.0, layer_sizes[l+1], "beta") for l in range(L)]}
+
+print(weights['W'])
+print(weights['V'])
 
 noise_std = 0.3  # scaling factor for noise used in corrupted encoder
 
@@ -79,12 +83,17 @@ def update_batch_normalization(batch, l):
 def encoder(inputs, noise_std):
     h = inputs + tf.random_normal(tf.shape(inputs)) * noise_std  # add noise to input
     d = {}  # to store the pre-activation, activation, mean and variance for each layer
+
     # The data for labeled and unlabeled examples are stored separately
     d['labeled'] = {'z': {}, 'm': {}, 'v': {}, 'h': {}}
     d['unlabeled'] = {'z': {}, 'm': {}, 'v': {}, 'h': {}}
     d['labeled']['z'][0], d['unlabeled']['z'][0] = split_lu(h)
+
+    print('size labeled:', d['labeled']['z'][0].get_shape().as_list())
+    print('size unlabeled:', d['unlabeled']['z'][0].get_shape().as_list())
+
     for l in range(1, L+1):
-        print "Layer ", l, ": ", layer_sizes[l-1], " -> ", layer_sizes[l]
+        print ("Layer ", l, ": ", layer_sizes[l-1], " -> ", layer_sizes[l])
         d['labeled']['h'][l-1], d['unlabeled']['h'][l-1] = split_lu(h)
         z_pre = tf.matmul(h, weights['W'][l-1])  # pre-activation
         z_pre_l, z_pre_u = split_lu(z_pre)  # split labeled and unlabeled examples
@@ -133,13 +142,14 @@ def encoder(inputs, noise_std):
     d['labeled']['h'][l], d['unlabeled']['h'][l] = split_lu(h)
     return h, d
 
-print "=== Corrupted Encoder ==="
+
+print("=== Corrupted Encoder ===")
 y_c, corr = encoder(inputs, noise_std)
 
-print "=== Clean Encoder ==="
+print ("=== Clean Encoder ===")
 y, clean = encoder(inputs, 0.0)  # 0.0 -> do not add noise
 
-print "=== Decoder ==="
+print ("=== Decoder ===")
 
 
 def g_gauss(z_c, u, size):
@@ -167,12 +177,14 @@ def g_gauss(z_c, u, size):
 z_est = {}
 d_cost = []  # to store the denoising cost of all layers
 for l in range(L, -1, -1):
-    print "Layer ", l, ": ", layer_sizes[l+1] if l+1 < len(layer_sizes) else None, " -> ", layer_sizes[l], ", denoising cost: ", denoising_cost[l]
+    print ("Layer ", l, ": ", layer_sizes[l+1] if l+1 < len(layer_sizes) else None, " -> ", layer_sizes[l], ", denoising cost: ", denoising_cost[l])
     z, z_c = clean['unlabeled']['z'][l], corr['unlabeled']['z'][l]
     m, v = clean['unlabeled']['m'].get(l, 0), clean['unlabeled']['v'].get(l, 1-1e-10)
     if l == L:
         u = unlabeled(y_c)
     else:
+        print(l)
+        print(weights['V'][l])
         u = tf.matmul(z_est[l+1], weights['V'][l])
     u = batch_normalization(u)
     z_est[l] = g_gauss(z_c, u, layer_sizes[l])
@@ -200,12 +212,12 @@ bn_updates = tf.group(*bn_assigns)
 with tf.control_dependencies([train_step]):
     train_step = tf.group(bn_updates)
 
-print "===  Loading Data ==="
-mnist = input_data.read_data_sets("MNIST_data", n_labeled=num_labeled, one_hot=True)
+print ("===  Loading Data ===")
+mnist = input_data.read_data_sets("../data/mnist", n_labeled=num_labeled, one_hot=True)
 
 saver = tf.train.Saver()
 
-print "===  Starting Session ==="
+print ("===  Starting Session ===")
 sess = tf.Session()
 
 i_iter = 0
@@ -216,7 +228,7 @@ if ckpt and ckpt.model_checkpoint_path:
     saver.restore(sess, ckpt.model_checkpoint_path)
     epoch_n = int(ckpt.model_checkpoint_path.split('-')[1])
     i_iter = (epoch_n+1) * (num_examples/batch_size)
-    print "Restored Epoch ", epoch_n
+    print ("Restored Epoch ", epoch_n)
 else:
     # no checkpoint exists. create checkpoints directory if it does not exist.
     if not os.path.exists('checkpoints'):
@@ -224,11 +236,12 @@ else:
     init = tf.global_variables_initializer()
     sess.run(init)
 
-print "=== Training ==="
-print "Initial Accuracy: ", sess.run(accuracy, feed_dict={inputs: mnist.test.images, outputs: mnist.test.labels, training: False}), "%"
+print("=== Training ===")
+print("Initial Accuracy: ", sess.run(accuracy, feed_dict={inputs: mnist.test.images, outputs: mnist.test.labels, training: False}), "%")
 
 for i in tqdm(range(i_iter, num_iter)):
     images, labels = mnist.train.next_batch(batch_size)
+
     sess.run(train_step, feed_dict={inputs: images, outputs: labels, training: True})
     if (i > 1) and ((i+1) % (num_iter/num_epochs) == 0):
         epoch_n = i/(num_examples/batch_size)
@@ -246,6 +259,6 @@ for i in tqdm(range(i_iter, num_iter)):
             log_i = [epoch_n] + sess.run([accuracy], feed_dict={inputs: mnist.test.images, outputs: mnist.test.labels, training: False})
             train_log_w.writerow(log_i)
 
-print "Final Accuracy: ", sess.run(accuracy, feed_dict={inputs: mnist.test.images, outputs: mnist.test.labels, training: False}), "%"
+print ("Final Accuracy: ", sess.run(accuracy, feed_dict={inputs: mnist.test.images, outputs: mnist.test.labels, training: False}), "%")
 
 sess.close()
