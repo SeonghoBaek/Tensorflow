@@ -1,9 +1,8 @@
 # Adversarial Anomaly Detection
 #
 # Author: Seongho Baek
-# Contact: seongho.baek@sk.com
+# Contact: seonghobaek@gmail.com
 #
-# For SKhynix only.
 # ==============================================================================
 
 import tensorflow as tf
@@ -417,31 +416,31 @@ def train(pretrain=True, b_test=False):
 			except:
 				print('Save failed')
 		else:
-		for i in range(100):
-			batch_x, batch_seq = util.get_sequence_batch(outlier_sample, lstm_sequence_length, 1)
+			for i in range(100):
+				batch_x, batch_seq = util.get_sequence_batch(outlier_sample, lstm_sequence_length, 1)
 
-			# batch_x = np.ones_like(batch_x)
+				# batch_x = np.ones_like(batch_x)
 
-			d_loss, r_loss, f_loss, c_loss = sess.run([d_fake_output, residual_loss, feature_matching_loss, conceptual_loss],
-			feed_dict={d_input: batch_x, g_encoder_input: batch_x,
-			lstm_input: batch_seq, bn_train: False})
-			alpha = 1.0
-			beta = 100
+				d_loss, r_loss, f_loss, c_loss = sess.run([d_fake_output, residual_loss, feature_matching_loss, conceptual_loss],
+				feed_dict={d_input: batch_x, g_encoder_input: batch_x,
+				lstm_input: batch_seq, bn_train: False})
+				alpha = 1.0
+				beta = 100
 
-			score = (1.0 - d_loss) * 10 + alpha * r_loss + beta * c_loss
-			print('outlier Anomaly Score:', score, ', d loss:', d_loss, ', r loss:', r_loss, ', c loss:', c_loss)
+				score = (1.0 - d_loss) * 10 + alpha * r_loss + beta * c_loss
+				print('outlier Anomaly Score:', score, ', d loss:', d_loss, ', r loss:', r_loss, ', c loss:', c_loss)
 
-			batch_x, batch_seq = util.get_sequence_batch(inlier_sample, lstm_sequence_length, 1)
+				batch_x, batch_seq = util.get_sequence_batch(inlier_sample, lstm_sequence_length, 1)
 
-			d_loss, r_loss, f_loss, c_loss = sess.run([d_fake_output, residual_loss, feature_matching_loss, conceptual_loss],
-			feed_dict={d_input: batch_x, g_encoder_input: batch_x,
-			lstm_input: batch_seq, bn_train: False})
+				d_loss, r_loss, f_loss, c_loss = sess.run([d_fake_output, residual_loss, feature_matching_loss, conceptual_loss],
+				feed_dict={d_input: batch_x, g_encoder_input: batch_x,
+				lstm_input: batch_seq, bn_train: False})
 
-			score = (1.0 - d_loss) * 10 + alpha * r_loss + beta * c_loss
+				score = (1.0 - d_loss) * 10 + alpha * r_loss + beta * c_loss
 
-			print('inlier Anomaly Score:', score, ', d loss:', d_loss , ', r loss:', r_loss, ', c loss:', c_loss)
+				print('inlier Anomaly Score:', score, ', d loss:', d_loss , ', r loss:', r_loss, ', c loss:', c_loss)
 
 
 if __name__ == '__main__':
-#train(pretrain=False, b_test=False)
-train(pretrain=False, b_test=True)
+	#train(pretrain=False, b_test=False)
+	train(pretrain=False, b_test=True)
