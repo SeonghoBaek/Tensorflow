@@ -139,9 +139,6 @@ class StackedAutoEncoder:
             self.weights.append(sess.run(encode['weights']))
             self.biases.append(sess.run(encode['biases']))
 
-            #self.weights.append(encode['weights'])
-            #self.biases.append(encode['biases'])
-
             return sess.run(encoded, feed_dict={x: data_x_})
 
 
