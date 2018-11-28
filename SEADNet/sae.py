@@ -2,9 +2,8 @@
 # - Stacked Auto Encoder Implementation
 #
 # Author: Seongho Baek
-# Contact: seongho.baek@sk.com
+# Contact: seonghobaek@gmail.com
 #
-# For SKhynix only.
 # ==============================================================================
 
 import numpy as np
